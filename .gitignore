@@ -1,0 +1,27 @@
+# Thư mục hệ điều hành và IDE
+.DS_Store
+.idea/
+.vscode/
+
+# Thư mục được tạo ra khi build hoặc cài đặt phụ thuộc
+/build/
+/dist/
+/target/
+node_modules/
+
+# Tệp Log và Cache
+*.log
+*.tmp
+.cache/
+
+# Tệp bí mật và cấu hình cá nhân
+.env
+config/secrets.yml
+
+.quodo/
+/certs
+/grafana
+/keyfile
+/pbm-config
+/prometheus
+/alertmanager
