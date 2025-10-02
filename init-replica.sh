@@ -5,8 +5,18 @@ export $(grep -v '^#' .env | xargs) # nạp biến nếu muốn
 
 # Biến cấu hình
 adminUser=${MONGO_ROOT_USER:-admin}
-adminPwd=${MONGO_ROOT_PASSWORD:-$(openssl rand -base64 32)}
+adminPwd=${MONGO_ROOT_PASSWORD:-$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | cut -c1-32)}
+monitorUser=${MONGO_MONITOR_USER:-monitor}
+monitorPwd=${MONGO_MONITOR_PASSWORD:-$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | cut -c1-32)}
+pbmPwd=${PBM_PASSWORD:-$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | cut -c1-32)}
+minioUser=${MINIO_ROOT_USER:-minio}
+minioPwd=${MINIO_ROOT_PASSWORD:-$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | cut -c1-32)}
+grafanaPwd=${GRAFANA_PASSWORD:-$(openssl rand -base64 16 | tr -dc 'A-Za-z0-9' | cut -c1-16)}
 rsName=${RS_NAME:-rs0}
+
+# Start containers
+echo "📦 Starting containers..."
+docker compose up --build -d --force-recreate mongo1 mongo2 mongo3 minio pbm
 
 
 # Đợi mongod sẵn sàng
@@ -104,10 +114,73 @@ try {
   }
 })();
 
+// PBM user for backup
+db.createUser({
+  user: 'pbm_user',
+  pwd: '$pbmPwd',
+  roles: [
+    { role: 'clusterMonitor', db: 'admin' },
+    { role: 'restore', db: 'admin' },
+    { role: 'backup', db: 'admin' },
+    { role: 'readWrite', db: 'admin' }
+  ]
+});
+
+// Monitor user for metrics
+db.createUser({
+  user: '$monitorUser',
+  pwd: '$monitorPwd',
+  roles: [
+    { role: 'clusterMonitor', db: 'admin' },
+    { role: 'read', db: 'local' }
+  ]
+});
+
 
 print('Reconfig done and PRIMARY is ready');
-rs.status();
 "
-echo "Created admin user | User: $adminUser | Pwd: $adminPwd"
 
+echo "Created admin user | User: $adminUser | Pwd: $adminPwd"
+echo "Created PBM user | User: 'pbm_user | Pwd: $pbmPwd"
+echo "Created Monitor user | User: $monitorUser | Pwd: $monitorPwd"
 echo "Created replica set"
+
+# Setup MinIO bucket
+echo "🪣 Tạo MinIO bucket cho backup..."
+docker run --rm --network $(basename "$(pwd)")_mongo_net \
+    --entrypoint sh \
+    minio/mc:latest \
+    -c "mc alias set myminio http://minio:9000 $minioUser $minioPwd && mc mb myminio/mongodb-backups"
+
+# Configure PBM
+echo "📦 Cấu hình PBM..."
+docker exec -it pbm sh -c "
+    pbm config --file /etc/pbm/pbm.conf &&
+    pbm config --set pitr.enabled=true &&
+    pbm config --set pitr.compression=gzip
+"
+
+# Start monitoring stack
+echo "📊 Starting monitoring stack..."
+docker compose up -d prometheus grafana mongo_exporter node_exporter alertmanager
+
+echo "✅ Triển khai hoàn tất!"
+echo ""
+echo "🌐 Các services đang chạy tại:"
+echo "   - MongoDB Primary: localhost:27017"
+echo "   - MongoDB Secondary 1: localhost:27018" 
+echo "   - MongoDB Secondary 2 (delayed): localhost:27019"
+echo "   - MinIO Console: http://localhost:9001"
+echo "   - Prometheus: http://localhost:9090"
+echo "   - Grafana: http://localhost:3000 (admin/$(grep GRAFANA_PASSWORD .env | cut -d= -f2))"
+echo "   - AlertManager: http://localhost:9093"
+echo ""
+echo "🔐 Thông tin đăng nhập:"
+echo "   - MongoDB admin: $adminUser | $adminPwd"
+echo "   - MinIO: $minioUser | $minioPwd"
+echo ""
+echo "📋 Các lệnh hữu ích:"
+echo "   - Kiểm tra replica set: docker exec -it mongo1 mongosh --eval 'rs.status()'"
+echo "   - Backup ngay: docker exec -it pbm pbm backup"
+echo "   - Xem backup: docker exec -it pbm pbm list"
+echo "   - PITR restore: docker exec -it pbm pbm restore --time '2024-01-01T12:00:00Z'"
