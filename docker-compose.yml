@@ -1,0 +1,270 @@
+x-mongo-common: &mongo_common
+  build:
+    context: .
+    args: 
+      MONGO_VER: ${MONGO_VER}
+  image: "mongo-numa:${MONGO_VER}"
+  restart: unless-stopped
+  security_opt:
+    - seccomp:./seccomp/seccomp-numa.json 
+  user: "999:999"
+  environment:
+    TZ: ${TZ}
+    MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USER}
+    MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+  ulimits:
+    nofile:
+      soft: 64000
+      hard: 64000
+    nproc:  16000
+    
+  networks: [mongo_net]
+  healthcheck:
+    test:
+      - CMD-SHELL
+      - |
+        mongosh --tls \
+          --tlsCAFile /mongo/ssl/ca.pem \
+          --tlsCertificateKeyFile /mongo/ssl/node.pem \
+          --quiet --eval "db.runCommand({ping:1}).ok" || exit 1
+    interval: 30s
+    timeout: 10s
+    retries: 3
+
+volumes:
+  mongo1_data:
+  mongo1_config:
+  mongo2_data:
+  mongo2_config:
+  mongo3_data:
+  mongo3_config:
+  minio_data:
+  prometheus_data:
+  grafana_data:
+  pbm_ssl:
+
+networks:
+  mongo_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+services:
+  mongo1:
+    <<: *mongo_common
+    container_name: mongo1
+    hostname: mongo1
+    environment:
+      NODE_CERT: mongo1.pem
+      NUMA_INTERLEAVE: "1"
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo1_data:/data/db
+      - mongo1_config:/data/configdb
+      - ./certs:/opt/ssl:Z
+      - ./keyfile:/opt/keyfile:Z
+    networks:
+      mongo_net:
+        ipv4_address: 172.20.0.11
+    
+
+  mongo2:
+    <<: *mongo_common
+    container_name: mongo2
+    hostname: mongo2
+    environment:
+      NODE_CERT: mongo2.pem
+      NUMA_INTERLEAVE: "1"
+    # NUMA_NODE: "1"
+    # DISABLE_INTERLEAVE: "1"
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo2_data:/data/db
+      - mongo2_config:/data/configdb
+      - ./certs:/opt/ssl:Z
+      - ./keyfile:/opt/keyfile:Z
+    depends_on:
+      - mongo1
+    networks:
+      mongo_net:
+        ipv4_address: 172.20.0.12
+    
+
+  mongo3:
+    <<: *mongo_common
+    container_name: mongo3
+    hostname: mongo3
+    environment:
+      NODE_CERT: mongo3.pem
+      NUMA_INTERLEAVE: "1"
+    ports:
+      - "27019:27017"
+    volumes:
+      - mongo3_data:/data/db
+      - mongo3_config:/data/configdb
+      - ./certs:/opt/ssl:Z
+      - ./keyfile:/opt/keyfile:Z
+    depends_on:
+      - mongo1
+    networks:
+      mongo_net:
+        ipv4_address: 172.20.0.13
+    
+
+  # MinIO for S3-compatible storage
+  minio:
+    image: minio/minio:latest
+    hostname: minio
+    container_name: minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    networks:
+      - mongo_net
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # PBM (Percona Backup for MongoDB)
+  pbm:
+    image: percona/percona-backup-mongodb:2.11.0
+    hostname: pbm
+    container_name: pbm
+    restart: unless-stopped
+    user: "0:0"
+    networks:
+      - mongo_net
+    volumes:
+      - ./pbm-config:/etc/pbm:ro,Z
+      - ./certs:/opt/ssl:ro,Z
+    environment:
+      PBM_MONGODB_URI: "mongodb://pbm_user:${PBM_PASSWORD}@mongo1:27017,mongo2:27017,mongo3:27017/admin?authSource=admin&replicaSet=${RS_NAME}&tls=true&tlsCertificateKeyFile=/opt/ssl/pbm.pem&tlsCAFile=/opt/ssl/ca.pem&tlsAllowInvalidHostnames=true"
+    depends_on:
+      - mongo1
+      - mongo2  
+      - mongo3
+      - minio
+    command:
+      - sh
+      - -lc
+      - |
+        set -e
+        mkdir -p /pbm/ssl
+        install -m 0700 -d /pbm/ssl
+        cp /opt/ssl/pbm.pem /pbm/ssl/pbm.pem
+        cp /opt/ssl/ca.pem /pbm/ssl/ca.pem
+        chown "$(id -u):$(id -g)" /pbm/ssl/pbm.pem /pbm/ssl/ca.pem
+        chmod 400 /pbm/ssl/pbm.pem
+        chmod 444 /pbm/ssl/ca.pem
+        exec tail -f /dev/null
+
+  # MongoDB Exporter for Prometheus
+  mongo_exporter:
+    image: percona/mongodb_exporter:0.40
+    hostname: mongo_exporter
+    container_name: mongo_exporter
+    restart: unless-stopped
+    networks:
+      - mongo_net
+    ports:
+      - "9216:9216"
+    volumes:
+      - ./certs:/opt/ssl:ro,Z
+    environment:
+      MONGODB_URI: "mongodb://${MONITOR_USER}:${MONITOR_PASSWORD}@mongo1:27017,mongo2:27017,mongo3:27017/admin?replicaSet=${RS_NAME}&tls=true&tlsCertificateKeyFile=/opt/ssl/client.pem&tlsCAFile=/opt/ssl/ca.pem&tlsAllowInvalidHostnames=true"
+    depends_on:
+      - mongo1
+    command:
+      - '--mongodb.uri=$(MONGODB_URI)'
+      - '--collect-all'
+      - '--web.listen-address=:9216'
+
+  # Prometheus
+  prometheus:
+    image: prom/prometheus:v2.47.2
+    hostname: prometheus
+    container_name: prometheus
+    restart: unless-stopped
+    networks:
+      - mongo_net
+    ports:
+      - "9090:9090"
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus:/etc/prometheus:ro,Z
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'
+      - '--web.enable-admin-api'
+
+# Grafana
+  grafana:
+    image: grafana/grafana:10.2.0
+    hostname: grafana
+    container_name: grafana
+    restart: unless-stopped
+    networks:
+      - mongo_net
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+
+  # Node Exporter for system metrics
+  node_exporter:
+    image: prom/node-exporter:v1.6.1
+    hostname: node_exporter
+    container_name: node_exporter
+    restart: unless-stopped
+    networks:
+      - mongo_net
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+
+  # AlertManager for alerting
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    hostname: alertmanager  
+    container_name: alertmanager
+    restart: unless-stopped
+    networks:
+      - mongo_net
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./alertmanager:/etc/alertmanager:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost:9093'
