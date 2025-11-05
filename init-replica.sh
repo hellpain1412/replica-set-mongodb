@@ -146,19 +146,19 @@ echo "Created Monitor user | User: $monitorUser | Pwd: $monitorPwd"
 echo "Created replica set"
 
 # Setup MinIO bucket
-echo "🪣 Tạo MinIO bucket cho backup..."
-docker run --rm --network $(basename "$(pwd)")_mongo_net \
-    --entrypoint sh \
-    minio/mc:latest \
-    -c "mc alias set myminio http://minio:9000 $minioUser $minioPwd && mc mb myminio/mongodb-backups"
+# echo "🪣 Tạo MinIO bucket cho backup..."
+# docker run --rm --network $(basename "$(pwd)")_mongo_net \
+#     --entrypoint sh \
+#     minio/mc:latest \
+#     -c "mc alias set myminio http://minio:9000 $minioUser $minioPwd && mc mb myminio/mongodb-backups"
 
-# Configure PBM
-echo "📦 Cấu hình PBM..."
-docker exec -it pbm sh -c "
-    pbm config --file /etc/pbm/pbm.conf &&
-    pbm config --set pitr.enabled=true &&
-    pbm config --set pitr.compression=gzip
-"
+# # Configure PBM
+# echo "📦 Cấu hình PBM..."
+# docker exec -it pbm sh -c "
+#     pbm config --file /etc/pbm/pbm.conf &&
+#     pbm config --set pitr.enabled=true &&
+#     pbm config --set pitr.compression=gzip
+# "
 
 # Start monitoring stack
 echo "📊 Starting monitoring stack..."
