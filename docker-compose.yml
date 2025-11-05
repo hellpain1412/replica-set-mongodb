@@ -20,16 +20,25 @@ x-mongo-common: &mongo_common
     
   networks: [mongo_net]
   healthcheck:
-    test:
-      - CMD-SHELL
-      - |
-        mongosh --tls \
-          --tlsCAFile /mongo/ssl/ca.pem \
-          --tlsCertificateKeyFile /mongo/ssl/node.pem \
-          --quiet --eval "db.runCommand({ping:1}).ok" || exit 1
-    interval: 30s
-    timeout: 10s
-    retries: 3
+  test:
+    - CMD-SHELL
+    - |
+      mongosh --tls \
+        --quiet --eval "db.runCommand({ping:1}).ok" || exit 1
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  # healthcheck:
+  #   test:
+  #     - CMD-SHELL
+  #     - |
+  #       mongosh --tls \
+  #         --tlsCAFile /mongo/ssl/ca.pem \
+  #         --tlsCertificateKeyFile /mongo/ssl/node.pem \
+  #         --quiet --eval "db.runCommand({ping:1}).ok" || exit 1
+  #   interval: 30s
+  #   timeout: 10s
+  #   retries: 3
 
 volumes:
   mongo1_data:
@@ -38,10 +47,10 @@ volumes:
   mongo2_config:
   mongo3_data:
   mongo3_config:
-  minio_data:
-  prometheus_data:
-  grafana_data:
-  pbm_ssl:
+  # minio_data:
+  # prometheus_data:
+  # grafana_data:
+  # pbm_ssl:
 
 networks:
   mongo_net:
