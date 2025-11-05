@@ -20,14 +20,14 @@ x-mongo-common: &mongo_common
     
   networks: [mongo_net]
   healthcheck:
-  test:
-    - CMD-SHELL
-    - |
-      mongosh --tls \
-        --quiet --eval "db.runCommand({ping:1}).ok" || exit 1
-  interval: 30s
-  timeout: 10s
-  retries: 3
+    test:
+      - CMD-SHELL
+      - |
+        mongosh --tls \
+          --quiet --eval "db.runCommand({ping:1}).ok" || exit 1
+    interval: 30s
+    timeout: 10s
+    retries: 3
   # healthcheck:
   #   test:
   #     - CMD-SHELL
