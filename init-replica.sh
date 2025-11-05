@@ -16,7 +16,7 @@ rsName=${RS_NAME:-rs0}
 
 # Start containers
 echo "📦 Starting containers..."
-docker compose up --build -d --force-recreate mongo1 mongo2 mongo3 minio pbm
+docker compose up --build -d --force-recreate mongo1 mongo2 mongo3
 
 
 # Đợi mongod sẵn sàng
@@ -162,7 +162,7 @@ docker exec -it pbm sh -c "
 
 # Start monitoring stack
 echo "📊 Starting monitoring stack..."
-docker compose up -d prometheus grafana mongo_exporter node_exporter alertmanager
+# docker compose up -d prometheus grafana mongo_exporter node_exporter alertmanager minio pbm
 
 echo "✅ Triển khai hoàn tất!"
 echo ""

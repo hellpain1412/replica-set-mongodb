@@ -60,8 +60,9 @@ subjectAltName = @alt_names
 
 [alt_names]
 DNS.1 = ${host}
-DNS.2 = ${host}.mongo-net
+DNS.2 = mongo.ataji.ataji.group
 IP.1  = 127.0.0.1
+IP.2  = 103.166.185.163
 EOF
     
     openssl x509 -req -in certs/${host}.csr -CA certs/ca.pem -CAkey certs/ca.key -CAcreateserial \
