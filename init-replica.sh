@@ -20,13 +20,23 @@ docker compose up --build -d --force-recreate mongo1 mongo2 mongo3
 
 
 # Đợi mongod sẵn sàng
-until docker exec mongo1 mongosh --tls --tlsCAFile /mongo/ssl/ca.pem --tlsCertificateKeyFile /mongo/ssl/node.pem  \
+# until docker exec mongo1 mongosh --tls --tlsCAFile /mongo/ssl/ca.pem --tlsCertificateKeyFile /mongo/ssl/node.pem  \
+# --host mongo1 --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do
+# echo "Waiting for mongo1..."; sleep 2; done
+# until docker exec mongo2 mongosh --tls --tlsCAFile /mongo/ssl/ca.pem --tlsCertificateKeyFile /mongo/ssl/node.pem \
+# --host mongo2 --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do
+# echo "Waiting for mongo2..."; sleep 2; done
+# until docker exec mongo3 mongosh --tls --tlsCAFile /mongo/ssl/ca.pem --tlsCertificateKeyFile /mongo/ssl/node.pem \
+# --host mongo3 --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do
+# echo "Waiting for mongo3..."; sleep 2; done
+
+until docker exec mongo1 mongosh \
 --host mongo1 --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do
 echo "Waiting for mongo1..."; sleep 2; done
-until docker exec mongo2 mongosh --tls --tlsCAFile /mongo/ssl/ca.pem --tlsCertificateKeyFile /mongo/ssl/node.pem \
+until docker exec mongo2 mongosh \
 --host mongo2 --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do
 echo "Waiting for mongo2..."; sleep 2; done
-until docker exec mongo3 mongosh --tls --tlsCAFile /mongo/ssl/ca.pem --tlsCertificateKeyFile /mongo/ssl/node.pem \
+until docker exec mongo3 mongosh \
 --host mongo3 --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do
 echo "Waiting for mongo3..."; sleep 2; done
 
@@ -37,7 +47,7 @@ echo "3 node mongod are up."
 # Tạo replica set và user admin
 echo "🛠️ Initializing replica set... $rsName"
 
-docker exec mongo1 mongosh --tls --tlsCAFile /mongo/ssl/ca.pem --tlsCertificateKeyFile /mongo/ssl/node.pem --eval "
+docker exec mongo1 mongosh --eval "
 if (!db.runCommand({ isMaster: 1 }).setName) {
     rs.initiate({
         _id: '$rsName',
@@ -68,7 +78,7 @@ print('PRIMARY is ready');
 "
 
 echo "🛠️ Initializing user admin"
-docker exec mongo1 mongosh --tls --tlsCAFile /mongo/ssl/ca.pem --tlsCertificateKeyFile /mongo/ssl/node.pem --eval "
+docker exec mongo1 mongosh --eval "
 db = db.getSiblingDB('admin');
 
 // Tạo user nếu chưa có (tránh chạy lại bị lỗi)
