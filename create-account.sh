@@ -20,8 +20,8 @@ password=${password_input:-$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | cut 
 echo "password: $password"
 
 
-echo "🛠️ Initializing user admin"
-docker exec mongo1 mongosh --eval "
+echo "🛠️ Initializing user db"
+docker exec mongo1 mongosh --tls --tlsCAFile /mongo/ssl/ca.pem --tlsCertificateKeyFile /mongo/ssl/node.pem --eval "
 db = db.getSiblingDB('admin');
 db.auth('$adminUser', '$adminPwd');
 db = db.getSiblingDB('$datase_name');

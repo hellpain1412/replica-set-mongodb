@@ -91,6 +91,8 @@ else
     echo "[*] keyFile already exists, skipping."
 fi
 
+rm certs/*.csr certs/*.srl certs/*.cnf certs/*.key certs/*.crt
+
 echo
 echo "[✓] Done. Files in ${CERTS_DIR} and ${KEYFILE_DIR}:"
 ls -l "${CERTS_DIR}" "${KEYFILE_DIR}"
