@@ -22,7 +22,7 @@ echo "📦 Starting containers..."
 docker compose up --build -d --force-recreate mongo1 mongo2 mongo3
 
 
-Đợi mongod sẵn sàng
+# Đợi mongod sẵn sàng
 until docker exec mongo1 mongosh --tls --tlsCAFile /mongo/ssl/ca.pem --tlsCertificateKeyFile /mongo/ssl/node.pem  \
 --host mongo1 --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do
 echo "Waiting for mongo1..."; sleep 2; done
