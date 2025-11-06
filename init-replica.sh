@@ -32,17 +32,6 @@ echo "Waiting for mongo2..."; sleep 2; done
 until docker exec mongo3 mongosh --tls --tlsCAFile /mongo/ssl/ca.pem --tlsCertificateKeyFile /mongo/ssl/node.pem \
 --host mongo3 --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do
 echo "Waiting for mongo3..."; sleep 2; done
-
-# until docker exec mongo1 mongosh \
-# --host mongo1 --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do
-# echo "Waiting for mongo1..."; sleep 2; done
-# until docker exec mongo2 mongosh \
-# --host mongo2 --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do
-# echo "Waiting for mongo2..."; sleep 2; done
-# until docker exec mongo3 mongosh \
-# --host mongo3 --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do
-# echo "Waiting for mongo3..."; sleep 2; done
-
 echo "3 node mongod are up."
 
 
