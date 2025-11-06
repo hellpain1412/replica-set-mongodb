@@ -24,21 +24,12 @@ x-mongo-common: &mongo_common
       - CMD-SHELL
       - |
         mongosh --tls \
+          --tlsCAFile /mongo/ssl/ca.pem \
+          --tlsCertificateKeyFile /mongo/ssl/node.pem \
           --quiet --eval "db.runCommand({ping:1}).ok" || exit 1
     interval: 30s
     timeout: 10s
     retries: 3
-  # healthcheck:
-  #   test:
-  #     - CMD-SHELL
-  #     - |
-  #       mongosh --tls \
-  #         --tlsCAFile /mongo/ssl/ca.pem \
-  #         --tlsCertificateKeyFile /mongo/ssl/node.pem \
-  #         --quiet --eval "db.runCommand({ping:1}).ok" || exit 1
-  #   interval: 30s
-  #   timeout: 10s
-  #   retries: 3
 
 volumes:
   mongo1_data:

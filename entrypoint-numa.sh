@@ -12,19 +12,19 @@ if [ -f /opt/keyfile/mongo-keyfile ]; then
     chown 999:999 /mongo/keyfile/mongo-keyfile
 fi
 
-# if [ -n /opt/ssl/"${NODE_CERT:-}" ] && [ -f /opt/ssl/"${NODE_CERT}" ]; then
-#     chmod 644 /opt/ssl/"${NODE_CERT}"
-#     cp /opt/ssl/"${NODE_CERT}" /mongo/ssl/node.pem
-#     chmod 600 /mongo/ssl/node.pem
-#     chown 999:999 /mongo/ssl/node.pem
-# fi
+if [ -n "${NODE_CERT:-}" ] && [ -f /opt/ssl/"${NODE_CERT}" ]; then
+    chmod 644 /opt/ssl/"${NODE_CERT}"
+    cp /opt/ssl/"${NODE_CERT}" /mongo/ssl/node.pem
+    chmod 600 /mongo/ssl/node.pem
+    chown 999:999 /mongo/ssl/node.pem
+fi
 
-# if [ -f /opt/ssl/ca.pem ]; then
-#     chmod 644 /opt/ssl/ca.pem
-#     cp /opt/ssl/ca.pem /mongo/ssl/ca.pem
-#     chmod 600 /mongo/ssl/ca.pem
-#     chown 999:999 /mongo/ssl/ca.pem
-# fi
+if [ -f /opt/ssl/ca.pem ]; then
+    chmod 644 /opt/ssl/ca.pem
+    cp /opt/ssl/ca.pem /mongo/ssl/ca.pem
+    chmod 600 /mongo/ssl/ca.pem
+    chown 999:999 /mongo/ssl/ca.pem
+fi
 
 # Tham số mongod
 MONGO_ARGS=()
@@ -36,12 +36,12 @@ MONGO_ARGS+=(--auth)
 if [ -f /mongo/keyfile/mongo-keyfile ]; then
     MONGO_ARGS+=(--keyFile /mongo/keyfile/mongo-keyfile)
 fi
-# if [ -f /mongo/ssl/node.pem ] && [ -f /mongo/ssl/ca.pem ]; then
-#     MONGO_ARGS+=(--tlsMode requireTLS)
-#     MONGO_ARGS+=(--tlsCertificateKeyFile /mongo/ssl/node.pem)
-#     MONGO_ARGS+=(--tlsCAFile /mongo/ssl/ca.pem)
-#     MONGO_ARGS+=(--tlsAllowConnectionsWithoutCertificates)
-# fi
+if [ -f /mongo/ssl/node.pem ] && [ -f /mongo/ssl/ca.pem ]; then
+    MONGO_ARGS+=(--tlsMode requireTLS)
+    MONGO_ARGS+=(--tlsCertificateKeyFile /mongo/ssl/node.pem)
+    MONGO_ARGS+=(--tlsCAFile /mongo/ssl/ca.pem)
+    MONGO_ARGS+=(--tlsAllowConnectionsWithoutCertificates)
+fi
 
 MONGO_ARGS+=(--oplogSize ${OPLOG_SIZE_MB:-2048})
 MONGO_ARGS+=(--wiredTigerCacheSizeGB ${WT_CACHE_GB:-1})

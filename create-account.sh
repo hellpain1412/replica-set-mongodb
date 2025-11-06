@@ -38,8 +38,8 @@ echo "#Database App" >> create-account.txt
 echo "DATABASE_NAME=$datase_name" >> create-account.txt
 echo "DATABASE_USER=$username" >> create-account.txt
 echo "DATABASE_PASS=$password" >> create-account.txt
-echo "DATABASE_URI=mongodb://$username:$password@mongo1:27017,mongo2:27017,mongo3:27017/$datase_name?replicaSet=rs0&authSource=$datase_name&tls=true" >> create-account.txt
+echo "DATABASE_URI=mongodb+srv://$username:$password@mongo.ten10.io.vn/$datase_name?authSource=$datase_name" >> create-account.txt
 echo " " >> create-account.txt
 
 echo "🛠️ Created user | User: $username | Pwd: $password"
-echo "🪣 URI: mongodb://$username:$password@mongo1:27017,mongo2:27017,mongo3:27017/$datase_name?replicaSet=rs0&authSource=$datase_name&tls=true"
+echo "🪣 URI: mongodb+srv://$username:$password@mongo.ten10.io.vn/$datase_name?authSource=$datase_name"

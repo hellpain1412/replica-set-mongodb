@@ -13,6 +13,9 @@ minioUser=${MINIO_ROOT_USER:-minio}
 minioPwd=${MINIO_ROOT_PASSWORD:-$(openssl rand -base64 32 | tr -dc 'A-Za-z0-9' | cut -c1-32)}
 grafanaPwd=${GRAFANA_PASSWORD:-$(openssl rand -base64 16 | tr -dc 'A-Za-z0-9' | cut -c1-16)}
 rsName=${RS_NAME:-rs0}
+mongo1Host=${MONGO1_HOST:-mongo1}
+mongo2Host=${MONGO2_HOST:-mongo2}
+mongo3Host=${MONGO3_HOST:-mongo3}
 
 # Start containers
 echo "📦 Starting containers..."
@@ -52,9 +55,9 @@ if (!db.runCommand({ isMaster: 1 }).setName) {
     rs.initiate({
         _id: '$rsName',
         members: [
-            { _id: 0, host: 'mongo1:27017', priority: 2 },
-            { _id: 1, host: 'mongo2:27017', priority: 1 },
-            { _id: 2, host: 'mongo3:27017', priority: 0 }
+            { _id: 0, host: '$mongo1Host:27017', priority: 2 },
+            { _id: 1, host: '$mongo2Host:27018', priority: 1 },
+            { _id: 2, host: '$mongo3Host:27019', priority: 0 }
         ]
     });
     print('Replica set initiated');
@@ -178,7 +181,7 @@ echo "✅ Triển khai hoàn tất!"
 echo ""
 echo "🌐 Các services đang chạy tại:"
 echo "   - MongoDB Primary: localhost:27017"
-echo "   - MongoDB Secondary 1: localhost:27018" 
+echo "   - MongoDB Secondary 1: localhost:27018"
 echo "   - MongoDB Secondary 2 (delayed): localhost:27019"
 echo "   - MinIO Console: http://localhost:9001"
 echo "   - Prometheus: http://localhost:9090"
